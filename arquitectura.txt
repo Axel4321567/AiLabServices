@@ -1,0 +1,140 @@
+**Esquema de Arquitectura para Micro-API en Python (FastAPI)**
+
+```
+/project_root
+├── app/
+│   ├── main.py           # Punto de entrada: instancia FastAPI y arranque con Uvicorn
+│   ├── api/              # Definición de routers/controladores
+│   │   └── microapi.py   # Endpoints y controladores
+│   ├── services/         # Lógica de negocio
+│   │   └── microapi_service.py
+│   ├── models/           # Pydantic DTOs / schemas
+│   │   └── schemas.py
+│   ├── repositories/     # Adaptadores a BD, colas u otros servicios externos
+│   │   └── dummy_repo.py
+│   ├── utils/            # Helpers genéricos (logging, configuración)
+│   │   └── logger.py
+│   └── core/             # Cross-cutting concerns (config, excepciones)
+│       ├── config.py
+│       └── exceptions.py
+├── tests/                # Tests unitarios e integración (pytest + httpx)
+└── Dockerfile            # Contenerización de la aplicación
+```
+
+## 2. Código de las Clases
+
+### 2.1 `app/models/schemas.py`
+
+```python
+from pydantic import BaseModel
+from typing import Any
+
+class InputContainer(BaseModel):
+    data: Any
+
+class OutputItem(BaseModel):
+    id: str
+    valor: float
+```
+
+### 2.2 `app/services/microapi_service.py`
+
+```python
+from typing import Any, List
+from app.models.schemas import OutputItem
+from app.repositories.dummy_repo import DummyRepo
+
+class MicroApiService:
+    def __init__(self, repo: DummyRepo = None):
+        self.repo = repo or DummyRepo()
+
+    def procesar(self, container: Any) -> List[OutputItem]:
+        # Normalizar a lista de dicts
+        if isinstance(container, dict):
+            items = list(container.values())
+        elif isinstance(container, list):
+            items = container
+        else:
+            raise ValueError("Formato no soportado: se esperaba dict o list")
+        
+        procesados: List[OutputItem] = []
+        for item in items:
+            raw_id = item.get("id")
+            raw_val = item.get("valor")
+            if raw_id is None or raw_val is None:
+                raise ValueError("Cada elemento debe tener 'id' y 'valor'")
+            
+            nuevo_valor = self._calcula(raw_val)
+            procesados.append(OutputItem(id=str(raw_id), valor=nuevo_valor))
+        
+        # Persistir o enviar a otro servicio
+        self.repo.save_all(procesados)
+        return procesados
+
+    def _calcula(self, x: Any) -> float:
+        return float(x) * 2
+```
+
+### 2.3 `app/repositories/dummy_repo.py`
+
+```python
+from typing import List
+from app.models.schemas import OutputItem
+
+class DummyRepo:
+    def save_all(self, items: List[OutputItem]) -> None:
+        # Aquí podrías implementar la lógica de persistencia o envío a colas
+        print(f"Guardando {len(items)} items en repositorio.")
+```
+
+### 2.4 `app/utils/logger.py`
+
+```python
+import logging
+
+
+def get_logger(name: str) -> logging.Logger:
+    logger = logging.getLogger(name)
+    if not logger.handlers:
+        handler = logging.StreamHandler()
+        formatter = logging.Formatter(
+            "%(asctime)s %(levelname)s [%(name)s] %(message)s"
+        )
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+        logger.setLevel(logging.INFO)
+    return logger
+```
+
+### 2.5 `app/core/config.py`
+
+```python
+from pydantic import BaseSettings
+
+class Settings(BaseSettings):
+    app_name: str = "MicroAPI"
+    debug: bool = True
+    host: str = "0.0.0.0"
+    port: int = 8000
+
+    class Config:
+        env_file = ".env"
+
+settings = Settings()
+```
+
+### 2.6 `app/core/exceptions.py`
+
+```python
+class AppException(Exception):
+    """Base class for application-specific exceptions."""
+    pass
+
+class ValidationException(AppException):
+    """Raised when input validation fails."""
+    pass
+
+class ProcessingException(AppException):
+    """Raised when processing cannot be completed."""
+    pass
+```
