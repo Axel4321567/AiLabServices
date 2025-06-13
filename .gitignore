@@ -1,0 +1,31 @@
+# Entornos virtuales
+.venv/
+venv/
+ENV/
+env/
+
+# Archivos de configuración de entorno
+*.env
+
+# __pycache__ y compilados
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Archivos de logs y bases de datos temporales
+*.log
+*.sqlite3
+
+# Archivos de IDE
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# Archivos de OS
+.DS_Store
+Thumbs.db
+
+# MongoDB dump/backups (si usas)
+dump/

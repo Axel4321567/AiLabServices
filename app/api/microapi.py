@@ -1,12 +1,16 @@
-from fastapi import APIRouter, Depends
+from typing import List
+from fastapi import APIRouter
+from app.models.schemas import Metric
 from app.services.microapi_service import MicroApiService
 
-router = APIRouter(prefix="/microapi")
+router = APIRouter()
+micro_service = MicroApiService()
 
-# ───── dependencia sencilla ─────
-def get_service() -> MicroApiService:
-    return MicroApiService()
+@router.get("/metrics", response_model=List[Metric])
+def get_metrics():
+    return micro_service.get_metrics()
 
-@router.get("/ping")
-def ping(service: MicroApiService = Depends(get_service)):
-    return service.ping()
+@router.get("/metrics/getAll", response_model=str)
+def get_all_metrics():
+    return micro_service.get_all_metrics()
+  
